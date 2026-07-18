@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Registre des dettes</title>
+<link rel="icon" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1B2A41">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#1B2A41;
+    --ink-2:#243247;
+    --paper:#FAFAF7;
+    --paper-2:#F1EEE7;
+    --amber:#C1873D;
+    --amber-dark:#A06C2A;
+    --slate:#5B6B79;
+    --line:#DBD5C8;
+    --danger:#B0413E;
+    --ok:#3F7D58;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);}
+  h1,h2,h3{font-family:'Source Serif 4',Georgia,serif;margin:0;}
+  .app{display:flex;min-height:100vh;}
+  .sidebar{
+    width:280px;flex-shrink:0;background:var(--ink);color:#EDEAE1;
+    display:flex;flex-direction:column;padding:20px 0;
+  }
+  .brand{padding:0 20px 18px 20px;border-bottom:1px solid rgba(255,255,255,.12);margin-bottom:12px;}
+  .brand h1{font-size:1.3rem;color:#fff;}
+  .brand span{font-size:.75rem;color:var(--amber);letter-spacing:.08em;text-transform:uppercase;}
+  .nav-list{flex:1;overflow-y:auto;padding:0 10px;}
+  .conc-block{margin-bottom:6px;}
+  .conc-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 10px;border-radius:8px;cursor:pointer;font-weight:600;
+  }
+  .conc-header:hover{background:rgba(255,255,255,.06);}
+  .conc-header.active{background:rgba(193,135,61,.18);}
+  .cour-list{padding-left:14px;border-left:2px solid rgba(255,255,255,.1);margin-left:14px;}
+  .cour-item{
+    padding:8px 10px;border-radius:8px;cursor:pointer;font-size:.9rem;color:#C9C4B8;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .cour-item:hover{background:rgba(255,255,255,.06);}
+  .cour-item.active{background:var(--amber);color:var(--ink);font-weight:600;}
+  .ghost-btn{
+    background:none;border:1px dashed rgba(255,255,255,.3);color:#C9C4B8;
+    padding:8px 10px;border-radius:8px;cursor:pointer;font-size:.82rem;width:100%;text-align:left;margin-top:4px;
+  }
+  .ghost-btn:hover{border-color:var(--amber);color:var(--amber);}
+  .icon-btn{background:none;border:none;color:#8b96a3;cursor:pointer;font-size:.85rem;padding:2px 4px;}
+  .icon-btn:hover{color:var(--danger);}
+  .main{flex:1;padding:32px 40px;overflow-x:auto;}
+  .topbar{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+  .title-block h2{font-size:1.6rem;}
+  .title-block .sub{color:var(--slate);font-size:.9rem;margin-top:4px;}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .btn{
+    font-family:'Inter',sans-serif;font-size:.85rem;font-weight:600;padding:9px 16px;border-radius:8px;
+    border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;
+  }
+  .btn:hover{border-color:var(--amber);}
+  .btn.primary{background:var(--amber);border-color:var(--amber);color:#fff;}
+  .btn.primary:hover{background:var(--amber-dark);}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:0 1px 3px rgba(27,42,65,.08);}
+  thead th{
+    background:var(--ink);color:#fff;font-family:'Inter';font-size:.75rem;text-transform:uppercase;
+    letter-spacing:.06em;padding:12px 14px;text-align:left;font-weight:600;
+  }
+  tbody td{padding:0;border-bottom:1px solid var(--paper-2);}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody input{
+    width:100%;border:none;background:transparent;padding:11px 14px;font-family:'IBM Plex Mono',monospace;
+    font-size:.92rem;color:var(--ink);
+  }
+  tbody input:focus{outline:2px solid var(--amber);outline-offset:-2px;background:#FFF9EE;}
+  td.nom-cell input{font-family:'Inter';font-weight:500;}
+  td.num{text-align:right;}
+  td.dette-val{font-family:'IBM Plex Mono',monospace;text-align:right;padding:11px 14px;font-weight:600;color:var(--ink-2);}
+  tr.total-row td{background:var(--paper-2);font-weight:700;padding:12px 14px;font-family:'IBM Plex Mono',monospace;}
+  tr.total-row td.label{font-family:'Source Serif 4',serif;font-weight:700;}
+  .rownum{width:40px;text-align:center;color:var(--slate);font-family:'IBM Plex Mono',monospace;}
+  .del-cell{width:36px;text-align:center;}
+  .empty-state{padding:60px 20px;text-align:center;color:var(--slate);}
+  .empty-state h3{color:var(--ink);margin-bottom:8px;}
+  @media(max-width:800px){
+    .app{flex-direction:column;}
+    .sidebar{width:100%;max-height:40vh;}
+    .main{padding:20px;}
+  }
+  @media print{
+    .sidebar,.actions,.no-print{display:none !important;}
+    .main{padding:0;}
+    body{background:#fff;}
+    *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;color-adjust:exact !important;}
+    table{box-shadow:none;border:1px solid var(--line);}
+    thead th{background:var(--ink) !important;color:#fff !important;}
+    tr.total-row td{background:var(--paper-2) !important;}
+    tbody input{
+      border:none !important;background:transparent !important;-webkit-appearance:none;appearance:none;
+      pointer-events:none;color:var(--ink) !important;
+    }
+    tbody input:focus{outline:none;background:transparent !important;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar no-print">
+    <div class="brand">
+      <h1>Registre des dettes</h1>
+      <span>Gestion des locataires</span>
+    </div>
+    <div class="nav-list" id="navList"></div>
+    <div style="padding:10px;">
+      <button class="ghost-btn" onclick="addConcessionnaire()">+ Nouveau concessionnaire</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div id="content"></div>
+  </main>
+</div>
+
+<script>
+const STORAGE_KEY = "registre_dettes_v1";
+let state = load();
+let selection = state.concessionnaires.length
+  ? {concId: state.concessionnaires[0].id, courId: state.concessionnaires[0].cours[0]?.id || null}
+  : {concId: null, courId: null};
+
+function load(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(raw){ try { return JSON.parse(raw); } catch(e){}}
+  return {concessionnaires: []};
+}
+function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function uid(){ return Math.random().toString(36).slice(2,9); }
+
+function addConcessionnaire(){
+  const nom = prompt("Nom du concessionnaire :");
+  if(!nom) return;
+  const c = {id:uid(), nom, cours:[{id:uid(), nom:"1ère cour", locataires:[]}]};
+  state.concessionnaires.push(c);
+  selection = {concId:c.id, courId:c.cours[0].id};
+  save(); render();
+}
+function renameConcessionnaire(id){
+  const c = state.concessionnaires.find(c=>c.id===id);
+  const n = prompt("Renommer le concessionnaire :", c.nom);
+  if(n){ c.nom = n; save(); render(); }
+}
+function deleteConcessionnaire(id){
+  if(!confirm("Supprimer ce concessionnaire et toutes ses cours ?")) return;
+  state.concessionnaires = state.concessionnaires.filter(c=>c.id!==id);
+  if(selection.concId===id){ selection = {concId:null, courId:null}; }
+  save(); render();
+}
+function addCour(concId){
+  const c = state.concessionnaires.find(c=>c.id===concId);
+  const n = c.cours.length+1;
+  const cour = {id:uid(), nom:`${n}ème cour`, locataires:[]};
+  c.cours.push(cour);
+  selection = {concId, courId:cour.id};
+  save(); render();
+}
+function renameCour(concId, courId){
+  const c = state.concessionnaires.find(c=>c.id===concId);
+  const cour = c.cours.find(x=>x.id===courId);
+  const n = prompt("Renommer la cour :", cour.nom);
+  if(n){ cour.nom=n; save(); render(); }
+}
+function deleteCour(concId, courId){
+  const c = state.concessionnaires.find(c=>c.id===concId);
+  if(c.cours.length<=1){ alert("Un concessionnaire doit garder au moins une cour."); return; }
+  if(!confirm("Supprimer cette cour et ses locataires ?")) return;
+  c.cours = c.cours.filter(x=>x.id!==courId);
+  if(selection.courId===courId) selection.courId = c.cours[0].id;
+  save(); render();
+}
+function selectCour(concId, courId){
+  selection = {concId, courId};
+  render();
+}
+function addLocataire(){
+  const cour = currentCour();
+  if(!cour) return;
+  cour.locataires.push({id:uid(), nom:"", loyer:0, mois:0, reliquat:0});
+  save(); render();
+}
+function deleteLocataire(id){
+  const cour = currentCour();
+  cour.locataires = cour.locataires.filter(l=>l.id!==id);
+  save(); render();
+}
+function updateLocataire(id, field, value){
+  const cour = currentCour();
+  const l = cour.locataires.find(l=>l.id===id);
+  if(field==="nom"){ l.nom = value; }
+  else { l[field] = parseFloat(value)||0; }
+  save();
+  updateRowDisplay(cour, id);
+}
+function updateRowDisplay(cour, id){
+  const l = cour.locataires.find(x=>x.id===id);
+  const d = dette(l);
+  const cell = document.getElementById(`dette-${id}`);
+  if(cell) cell.textContent = fmt(d);
+  const total = cour.locataires.reduce((s,x)=>s+dette(x),0);
+  const totalCell = document.getElementById('total-value');
+  if(totalCell) totalCell.textContent = fmt(total);
+}
+function sortAlpha(){
+  const cour = currentCour();
+  cour.locataires.sort((a,b)=> (a.nom||"").localeCompare(b.nom||"", 'fr', {sensitivity:'base'}));
+  save(); render();
+}
+function currentConc(){ return state.concessionnaires.find(c=>c.id===selection.concId); }
+function currentCour(){
+  const c = currentConc();
+  if(!c) return null;
+  return c.cours.find(x=>x.id===selection.courId);
+}
+function fmt(n){ return (n||0).toLocaleString('fr-FR').replace(/,/g,' '); }
+function dette(l){ return (l.loyer||0)*(l.mois||0) + (l.reliquat||0); }
+
+function render(){
+  renderNav();
+  renderContent();
+}
+function renderNav(){
+  const nav = document.getElementById("navList");
+  nav.innerHTML = "";
+  state.concessionnaires.forEach(c=>{
+    const block = document.createElement("div");
+    block.className="conc-block";
+    const header = document.createElement("div");
+    header.className="conc-header"+(c.id===selection.concId?" active":"");
+    header.innerHTML = `<span onclick="selectConcOnly('${c.id}')" style="flex:1">${escapeHtml(c.nom)}</span>
+      <span>
+        <button class="icon-btn" title="Renommer" onclick="event.stopPropagation();renameConcessionnaire('${c.id}')">✎</button>
+        <button class="icon-btn" title="Supprimer" onclick="event.stopPropagation();deleteConcessionnaire('${c.id}')">✕</button>
+      </span>`;
+    block.appendChild(header);
+    const courList = document.createElement("div");
+    courList.className="cour-list";
+    c.cours.forEach(cour=>{
+      const item = document.createElement("div");
+      item.className="cour-item"+(cour.id===selection.courId && c.id===selection.concId?" active":"");
+      item.innerHTML = `<span onclick="selectCour('${c.id}','${cour.id}')" style="flex:1">${escapeHtml(cour.nom)}</span>
+        <span>
+          <button class="icon-btn" title="Renommer" onclick="event.stopPropagation();renameCour('${c.id}','${cour.id}')">✎</button>
+          <button class="icon-btn" title="Supprimer" onclick="event.stopPropagation();deleteCour('${c.id}','${cour.id}')">✕</button>
+        </span>`;
+      courList.appendChild(item);
+    });
+    const addBtn = document.createElement("button");
+    addBtn.className="ghost-btn";
+    addBtn.textContent="+ Ajouter une cour";
+    addBtn.onclick=()=>addCour(c.id);
+    courList.appendChild(addBtn);
+    block.appendChild(courList);
+    nav.appendChild(block);
+  });
+}
+function selectConcOnly(concId){
+  const c = state.concessionnaires.find(c=>c.id===concId);
+  selection = {concId, courId: c.cours[0]?.id || null};
+  render();
+}
+function escapeHtml(s){ return (s||"").replace(/[&<>"]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+function renderContent(){
+  const el = document.getElementById("content");
+  const c = currentConc();
+  const cour = currentCour();
+  if(!c || !cour){
+    el.innerHTML = `<div class="empty-state">
+      <h3>Aucun concessionnaire</h3>
+      <p>Clique sur « + Nouveau concessionnaire » pour commencer.</p>
+    </div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="topbar">
+      <div class="title-block">
+        <h2>${escapeHtml(c.nom)}</h2>
+        <div class="sub">${escapeHtml(cour.nom)} · Fait le ${new Date().toLocaleDateString('fr-FR')}</div>
+      </div>
+      <div class="actions no-print">
+        <button class="btn" onclick="sortAlpha()">Trier A→Z</button>
+        <button class="btn" onclick="addLocataire()">+ Locataire</button>
+        <button class="btn" onclick="exportExcel()">Exporter Excel</button>
+        <button class="btn primary" onclick="window.print()">Exporter PDF</button>
+      </div>
+    </div>
+    <div id="tableWrap"></div>
+  `;
+  renderTableOnly();
+}
+function renderTableOnly(){
+  const cour = currentCour();
+  if(!cour) return;
+  const wrap = document.getElementById("tableWrap");
+  let total = 0;
+  const rows = cour.locataires.map((l,i)=>{
+    const d = dette(l);
+    total += d;
+    return `<tr>
+      <td class="rownum">${i+1}</td>
+      <td class="nom-cell"><input value="${escapeHtml(l.nom)}" placeholder="Nom" oninput="updateLocataire('${l.id}','nom',this.value)"></td>
+      <td class="num"><input type="number" value="${l.loyer}" oninput="updateLocataire('${l.id}','loyer',this.value)"></td>
+      <td class="num"><input type="number" value="${l.mois}" oninput="updateLocataire('${l.id}','mois',this.value)"></td>
+      <td class="num"><input type="number" value="${l.reliquat}" oninput="updateLocataire('${l.id}','reliquat',this.value)"></td>
+      <td class="dette-val" id="dette-${l.id}">${fmt(d)}</td>
+      <td class="del-cell no-print"><button class="icon-btn" onclick="deleteLocataire('${l.id}')">✕</button></td>
+    </tr>`;
+  }).join("");
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>N°</th><th>Nom</th><th>Loyer</th><th>Mois</th><th>Reliquat</th><th>Dette</th><th class="no-print"></th>
+      </tr></thead>
+      <tbody>
+        ${rows || `<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--slate);">Aucun locataire — clique « + Locataire »</td></tr>`}
+        <tr class="total-row">
+          <td></td><td class="label">TOTAL</td><td></td><td></td><td></td><td class="num" id="total-value" style="text-align:right">${fmt(total)}</td><td class="no-print"></td>
+        </tr>
+      </tbody>
+    </table>
+  `;
+}
+
+function exportExcel(){
+  const c = currentConc();
+  const cour = currentCour();
+  if(!cour) return;
+  const data = [["N°","NOM","LOYER","MOIS","RELIQUAT","DETTE"]];
+  let total=0;
+  cour.locataires.forEach((l,i)=>{
+    const d = dette(l);
+    total += d;
+    data.push([i+1, l.nom, l.loyer, l.mois, l.reliquat, d]);
+  });
+  data.push(["","TOTAL","","","",total]);
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{wch:5},{wch:26},{wch:10},{wch:8},{wch:10},{wch:12}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Tableau");
+  XLSX.writeFile(wb, `${c.nom} - ${cour.nom}.xlsx`);
+}
+
+render();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("service-worker.js").catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
