@@ -1,4 +1,4 @@
-const CACHE_NAME = "registre-dettes-v1";
+const CACHE_NAME = "registre-dettes-v2";
 const FILES_TO_CACHE = [
   "./index.html",
   "./manifest.json",
@@ -22,8 +22,17 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+// Réseau en priorité : va toujours chercher la dernière version en ligne d'abord,
+// et n'utilise le cache que si le téléphone est hors-ligne.
 self.addEventListener("fetch", (event) => {
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
+
